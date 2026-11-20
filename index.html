@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NutriDiario - Seguimiento Nutricional y Ejercicio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        emerald: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .touch-active:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col justify-between overflow-hidden">
+
+    <!-- Container Frame optimized for Mobile & Tablet view -->
+    <div id="app" class="w-full max-w-lg mx-auto h-full flex flex-col bg-white shadow-2xl relative overflow-hidden">
+
+        <!-- TOP BAR / HEADER -->
+        <header class="bg-white border-b border-slate-100 px-4 py-2.5 flex items-center justify-between z-10 shrink-0">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 3v18m-9-9h18"/></svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg leading-tight tracking-tight text-slate-900">NutriDiario</h1>
+                    <p class="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider" id="headerSubtitle">Diario nutricional</p>
+                </div>
+            </div>
+            
+            <button id="btnRemindersBanner" onclick="app.requestNotificationsPermission()" class="text-xs px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium flex items-center space-x-1 transition-colors">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="txtReminderStatus">Notificaciones</span>
+            </button>
+        </header>
+
+        <!-- IN-APP REMINDER BANNER (Conditional) -->
+        <div id="inAppReminderBanner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-xs text-amber-900 shrink-0">
+            <div class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span id="reminderBannerText">¿Has registrado tu comida? Tienes 0 alimentos anotados hoy.</span>
+            </div>
+            <button onclick="document.getElementById('inAppReminderBanner').classList.add('hidden')" class="font-bold text-amber-700 ml-2">✕</button>
+        </div>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 overflow-hidden relative flex flex-col bg-slate-50/50">
+
+            <!-- TAB 1: COMIDAS (DIARIO) -->
+            <section id="viewDiario" class="h-full flex flex-col p-3 space-y-2.5 overflow-hidden">
+                
+                <!-- Date Selector Header -->
+                <div class="bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 flex items-center justify-between shrink-0">
+                    <button onclick="app.changeDate(-1)" class="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-700 touch-active font-bold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    
+                    <div class="text-center cursor-pointer px-2" onclick="app.resetToToday()">
+                        <div class="font-extrabold text-slate-800 text-sm capitalize" id="displayDate">Hoy</div>
+                        <div class="text-[11px] text-slate-400 font-medium" id="displaySubDate">-- / -- / ----</div>
+                    </div>
+
+                    <button onclick="app.changeDate(1)" class="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-700 touch-active font-bold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+
+                <!-- Comprehensive Calorie & Exercise Balance Card -->
+                <div class="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-800 text-white rounded-2xl p-3.5 shadow-lg border border-slate-700/50 shrink-0 space-y-2.5">
+                    
+                    <!-- Top metrics grid -->
+                    <div class="grid grid-cols-4 gap-1 text-center border-b border-slate-700/60 pb-2">
+                        <div>
+                            <span class="text-[9px] text-slate-400 uppercase font-semibold block">Base</span>
+                            <span class="text-xs font-bold text-slate-200" id="valKcalBase">2000</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] text-emerald-400 uppercase font-semibold block">+ Extra</span>
+                            <span class="text-xs font-bold text-emerald-400" id="valKcalExtra">+0</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] text-amber-400 uppercase font-semibold block">Comido</span>
+                            <span class="text-xs font-bold text-amber-300" id="valKcalLogged">0</span>
+                        </div>
+                        <div>
+                            <span class="text-[9px] text-slate-300 uppercase font-semibold block" id="lblKcalDiff">Restan</span>
+                            <span class="text-xs font-black text-teal-300" id="valKcalDiff">2000</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] text-slate-300">
+                            <span>Progreso del objetivo total (<span id="valTotalTargetKcal">2000</span> kcal)</span>
+                            <span id="valPctProgress" class="font-bold">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-700/60 rounded-full h-2 overflow-hidden">
+                            <div id="barKcalProgress" class="bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Macronutrient Pills -->
+                    <div class="grid grid-cols-3 gap-2 pt-0.5 text-center">
+                        <div class="bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+                            <span class="text-[9px] text-slate-400 uppercase font-semibold block">Proteínas</span>
+                            <span class="text-xs font-bold text-emerald-300" id="valProt">0g</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+                            <span class="text-[9px] text-slate-400 uppercase font-semibold block">Carbos</span>
+                            <span class="text-xs font-bold text-amber-300" id="valCarb">0g</span>
+                        </div>
+                        <div class="bg-slate-800/80 p-1 rounded-xl border border-slate-700/40">
+                            <span class="text-[9px] text-slate-400 uppercase font-semibold block">Grasas</span>
+                            <span class="text-xs font-bold text-rose-300" id="valFat">0g</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meal Sub-Tabs -->
+                <div class="grid grid-cols-4 gap-1 p-1 bg-slate-200/60 rounded-xl shrink-0 text-xs font-semibold">
+                    <button onclick="app.setCategory('Desayuno')" id="tabCatDesayuno" class="tab-cat py-1.5 rounded-lg text-center transition-all text-slate-600">Desayuno</button>
+                    <button onclick="app.setCategory('Comida')" id="tabCatComida" class="tab-cat py-1.5 rounded-lg text-center transition-all text-slate-600">Comida</button>
+                    <button onclick="app.setCategory('Cena')" id="tabCatCena" class="tab-cat py-1.5 rounded-lg text-center transition-all text-slate-600">Cena</button>
+                    <button onclick="app.setCategory('Snacks')" id="tabCatSnacks" class="tab-cat py-1.5 rounded-lg text-center transition-all text-slate-600">Snacks</button>
+                </div>
+
+                <!-- Predictive Search Bar (Local + Open Food Facts API) -->
+                <div class="relative shrink-0 z-20">
+                    <div class="relative flex items-center">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <input type="text" id="inputSearchFood" oninput="app.onSearchInput(this.value)" placeholder="Buscar huevo, manzana, tortilla, marca..." 
+                            class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 shadow-sm transition-all" autocomplete="off">
+                        <button id="btnClearSearch" onclick="app.clearSearch()" class="hidden absolute right-2.5 text-slate-400 hover:text-slate-600 p-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Autocomplete Results Container -->
+                    <div id="searchDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-56 overflow-y-auto custom-scrollbar divide-y divide-slate-100 z-30">
+                        <!-- Dynamic search items -->
+                    </div>
+                </div>
+
+                <!-- LOGGED FOODS LIST -->
+                <div class="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-2.5 overflow-y-auto custom-scrollbar flex flex-col">
+                    <div id="loggedList" class="space-y-2 flex-1">
+                        <!-- Logged items rendered dynamically -->
+                    </div>
+
+                    <!-- Empty State + 1-Tap Copy Yesterday Button -->
+                    <div id="emptyState" class="hidden h-full flex flex-col items-center justify-center text-center p-3 space-y-2">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700 text-xs">Sin registros en <span id="lblEmptyCategory">Desayuno</span></p>
+                            <p class="text-[11px] text-slate-400">Busca un alimento o repite tu comida de ayer</p>
+                        </div>
+                        <button onclick="app.copyYesterdayMeal()" class="touch-active bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-emerald-200 flex items-center space-x-1.5 transition-all shadow-sm">
+                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>Repetir <span id="lblCopyCat">Desayuno</span> de ayer</span>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- TAB 2: EJERCICIO Y PASOS DIARIOS -->
+            <section id="viewEjercicio" class="hidden h-full p-3.5 overflow-y-auto custom-scrollbar space-y-3.5">
+                
+                <!-- CARD 1: PASOS DIARIOS -->
+                <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-2xl p-4 shadow-md space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-sm leading-tight">Pasos Diarios</h3>
+                                <p class="text-[10px] text-emerald-100 font-medium">Sumas aprox. 0.04 kcal por paso</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-2xl font-black" id="lblStepCalories">+0</span>
+                            <span class="text-xs font-bold block text-emerald-100">kcal extra</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white/10 backdrop-blur-md rounded-xl p-2.5 flex items-center justify-between border border-white/20">
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="inputDailySteps" min="0" step="500" placeholder="Ej. 8000" 
+                                class="w-28 bg-white text-slate-900 font-extrabold text-base rounded-lg px-2.5 py-1 text-center focus:outline-none focus:ring-2 focus:ring-white">
+                            <span class="text-xs font-bold">pasos</span>
+                        </div>
+                        <button onclick="app.updateStepsFromInput()" class="bg-white text-emerald-700 font-extrabold text-xs px-3.5 py-2 rounded-lg touch-active shadow-sm hover:bg-emerald-50 transition-colors">
+                            Guardar
+                        </button>
+                    </div>
+
+                    <!-- Quick Step Presets -->
+                    <div class="flex items-center justify-between gap-1 text-xs">
+                        <button onclick="app.setQuickSteps(3000)" class="flex-1 bg-white/15 hover:bg-white/25 py-1.5 rounded-lg text-center font-bold text-[11px] transition-colors">3.000</button>
+                        <button onclick="app.setQuickSteps(6000)" class="flex-1 bg-white/15 hover:bg-white/25 py-1.5 rounded-lg text-center font-bold text-[11px] transition-colors">6.000</button>
+                        <button onclick="app.setQuickSteps(8000)" class="flex-1 bg-white/15 hover:bg-white/25 py-1.5 rounded-lg text-center font-bold text-[11px] transition-colors">8.000</button>
+                        <button onclick="app.setQuickSteps(10000)" class="flex-1 bg-white/15 hover:bg-white/25 py-1.5 rounded-lg text-center font-bold text-[11px] transition-colors">10.000</button>
+                    </div>
+                </div>
+
+                <!-- CARD 2: REGISTRO DE ENTRENAMIENTO -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+                    <div class="border-b border-slate-100 pb-2 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-extrabold text-slate-900 text-sm">Añadir Actividad o Ejercicio</h3>
+                            <p class="text-[11px] text-slate-400">Ingresa las calorías quemadas directamente o calcula por tiempo</p>
+                        </div>
+                    </div>
+
+                    <form onsubmit="app.saveWorkout(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Nombre del Ejercicio / Actividad</label>
+                            <input type="text" id="workName" required placeholder="Ej. Pesas en gimnasio, Carrera, Natación..." 
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500/30">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Calorías Quemadas (kcal)</label>
+                                <input type="number" id="workKcal" required min="1" max="3000" placeholder="Ej. 250" 
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/30">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Duración (opcional min)</label>
+                                <input type="number" id="workDuration" min="1" max="600" placeholder="Ej. 45" 
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800">
+                            </div>
+                        </div>
+
+                        <!-- Quick Workout Presets -->
+                        <div>
+                            <span class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Presets Rápidos:</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="b
