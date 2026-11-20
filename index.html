@@ -205,7 +205,10 @@
             <!-- Search & Add Food Card -->
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
                 <div class="flex justify-between items-center">
-                    <h3 class="text-sm font-bold text-slate-800">Añadir Alimento</h3>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800">Añadir Alimento</h3>
+                        <p class="text-[11px] text-slate-400">Búsqueda online (Mercadona, Carrefour, Hacendado...)</p>
+                    </div>
                     <button onclick="openCustomFoodModal()" class="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center gap-1">
                         + Crear Personalizado
                     </button>
@@ -213,7 +216,7 @@
                 
                 <div class="flex gap-2">
                     <div class="relative flex-1">
-                        <input type="text" id="foodSearchInput" placeholder="Buscar ej: Avena, Pechuga, Huevo..." onkeyup="handleSearchKeyUp(event)" class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                        <input type="text" id="foodSearchInput" placeholder="Ej: Avena Mercadona, Leche Carrefour, Huevo..." onkeyup="handleSearchKeyUp(event)" class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 absolute left-3 top-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
@@ -231,10 +234,10 @@
                             <svg class="animate-spin h-3.5 w-3.5 text-brand-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg> Buscando en API...
+                            </svg> Consultando Open Food Facts...
                         </span>
                     </div>
-                    <div id="searchResultsList" class="max-h-56 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                    <div id="searchResultsList" class="max-h-64 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
                     </div>
                 </div>
             </div>
@@ -884,7 +887,10 @@
                                 ${items.map((item, idx) => `
                                     <div class="pt-2 flex justify-between items-center text-xs">
                                         <div class="pr-2">
-                                            <span class="font-semibold text-slate-700 block text-sm">${item.name}</span>
+                                            <div class="flex items-center gap-1">
+                                                <span class="font-semibold text-slate-700 block text-sm">${item.name}</span>
+                                                ${item.brand ? `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">🛒 ${item.brand}</span>` : ''}
+                                            </div>
                                             <span class="text-slate-400 text-[11px]">
                                                 ${item.amount} ${item.unit === 'grams' ? 'g' : 'ud'} • P: ${item.protein}g | C: ${item.carbs}g | G: ${item.fat}g
                                             </span>
@@ -905,7 +911,7 @@
             container.innerHTML = html;
         }
 
-        // Food Search
+        // ENHANCED ONLINE FOOD SEARCH (Prioritizing Spanish Supermarkets: Mercadona, Carrefour, Hacendado, etc.)
         async function searchFood() {
             const query = document.getElementById('foodSearchInput').value.trim();
             if (!query) return;
@@ -925,44 +931,77 @@
 
             let html = '';
             if (localMatches.length > 0) {
-                html += `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Catálogo Local</div>`;
+                html += `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Catálogo Local / Favoritos</div>`;
                 localMatches.forEach(item => {
-                    html += createSearchResultHTML(item);
+                    html += createSearchResultHTML(item, 'Local');
                 });
             }
 
             try {
-                const response = await fetch(`https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=6`);
+                // Fetch up to 30 items from Spain's Open Food Facts database
+                const url = `https://es.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=35`;
+                const response = await fetch(url);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.products && data.products.length > 0) {
-                        html += `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider my-1">Open Food Facts API</div>`;
+                        const superBrands = ['hacendado', 'mercadona', 'carrefour', 'deliplus', 'compy', 'bosque verde', 'dia', 'lidl', 'eroski', 'el corte ingles', 'alcampo'];
+                        
+                        const parsedProducts = [];
                         data.products.forEach(prod => {
                             const pName = prod.product_name_es || prod.product_name || 'Alimento';
+                            const rawBrand = (prod.brands || '').trim();
                             const nut = prod.nutriments || {};
-                            const kcal = Math.round(nut['energy-kcal_100g'] || nut['energy-kcal'] || 0);
+                            const kcal = Math.round(nut['energy-kcal_100g'] || nut['energy-kcal_value'] || nut['energy-kcal'] || 0);
 
                             if (kcal > 0) {
-                                const itemObj = {
+                                const brandLower = rawBrand.toLowerCase();
+                                const nameLower = pName.toLowerCase();
+                                
+                                let isSuper = superBrands.some(sb => brandLower.includes(sb) || nameLower.includes(sb));
+                                let displayBrand = rawBrand;
+
+                                if (brandLower.includes('hacendado') || nameLower.includes('hacendado') || brandLower.includes('mercadona') || nameLower.includes('mercadona')) {
+                                    displayBrand = 'Mercadona (Hacendado)';
+                                    isSuper = true;
+                                } else if (brandLower.includes('carrefour') || nameLower.includes('carrefour')) {
+                                    displayBrand = 'Carrefour';
+                                    isSuper = true;
+                                } else if (brandLower.includes('deliplus') || nameLower.includes('deliplus')) {
+                                    displayBrand = 'Mercadona (Deliplus)';
+                                    isSuper = true;
+                                }
+
+                                parsedProducts.push({
                                     id: 'off-' + (prod.id || Math.random()),
-                                    name: `${pName} ${prod.brands ? '(' + prod.brands + ')' : ''}`,
+                                    name: pName,
+                                    brand: displayBrand,
+                                    isSupermarket: isSuper,
                                     kcal: kcal,
                                     protein: Math.round((nut.proteins_100g || 0) * 10) / 10,
                                     carbs: Math.round((nut.carbohydrates_100g || 0) * 10) / 10,
                                     fat: Math.round((nut.fat_100g || 0) * 10) / 10
-                                };
-                                html += createSearchResultHTML(itemObj);
+                                });
                             }
                         });
+
+                        // Sort so supermarket brands (Mercadona, Carrefour, etc.) appear at the top
+                        parsedProducts.sort((a, b) => (b.isSupermarket ? 1 : 0) - (a.isSupermarket ? 1 : 0));
+
+                        if (parsedProducts.length > 0) {
+                            html += `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider my-1">Open Food Facts (Supermercados & Marcas)</div>`;
+                            parsedProducts.forEach(prod => {
+                                html += createSearchResultHTML(prod);
+                            });
+                        }
                     }
                 }
             } catch (err) {
-                console.log('Error API OpenFoodFacts', err);
+                console.log('Error conectando a OpenFoodFacts API', err);
             }
 
             loader.classList.add('hidden');
             if (!html) {
-                resultsList.innerHTML = `<p class="text-xs text-slate-400 py-2">Sin resultados para "${query}". Utilice "+ Crear Personalizado".</p>`;
+                resultsList.innerHTML = `<p class="text-xs text-slate-400 py-2">Sin resultados para "${query}". Pruebe con otro término o use "+ Crear Personalizado".</p>`;
             } else {
                 resultsList.innerHTML = html;
             }
@@ -972,15 +1011,20 @@
             if (e.key === 'Enter') searchFood();
         }
 
-        function createSearchResultHTML(item) {
+        function createSearchResultHTML(item, defaultTag = '') {
             const jsonStr = JSON.stringify(item).replace(/"/g, '&quot;');
+            const badgeStr = item.brand ? `🛒 ${item.brand}` : (defaultTag ? defaultTag : '');
+            
             return `
                 <div onclick="openAddFoodModal(${jsonStr})" class="p-2.5 bg-slate-50 hover:bg-brand-50 rounded-xl cursor-pointer transition flex justify-between items-center border border-slate-100 hover:border-brand-200">
-                    <div>
-                        <span class="font-semibold text-xs text-slate-700 block">${item.name}</span>
+                    <div class="pr-2">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span class="font-semibold text-xs text-slate-800">${item.name}</span>
+                            ${badgeStr ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">${badgeStr}</span>` : ''}
+                        </div>
                         <span class="text-[11px] text-slate-400">100g: ${item.kcal} kcal | P: ${item.protein || 0}g C: ${item.carbs || 0}g G: ${item.fat || 0}g</span>
                     </div>
-                    <span class="text-xs font-bold text-brand-600 bg-brand-100/60 px-2 py-1 rounded-lg">+ Añadir</span>
+                    <span class="text-xs font-bold text-brand-600 bg-brand-100/60 px-2 py-1 rounded-lg shrink-0">+ Añadir</span>
                 </div>
             `;
         }
@@ -988,7 +1032,7 @@
         function openAddFoodModal(item) {
             selectedFoodForModal = item;
             document.getElementById('modalFoodTitle').textContent = item.name;
-            document.getElementById('modalFoodSubtitle').textContent = `Base 100g/unidad: ${item.kcal} kcal`;
+            document.getElementById('modalFoodSubtitle').textContent = `${item.brand ? item.brand + ' • ' : ''}Base 100g/unidad: ${item.kcal} kcal`;
 
             const unitSelect = document.getElementById('modalUnitType');
             const amountInput = document.getElementById('modalAmountInput');
@@ -1072,6 +1116,7 @@
 
             const itemToSave = {
                 name: selectedFoodForModal.name,
+                brand: selectedFoodForModal.brand || null,
                 amount: amount,
                 unit: unit,
                 kcal: Math.round(selectedFoodForModal.kcal * factor),
@@ -1254,7 +1299,8 @@
                 const oldSum = valP + valC;
                 if (oldSum > 0) {
                     valP = Math.round((valP / oldSum) * remaining);
-                    valC = remaining - valP;
+                    valC = Math.round((valC / oldSum) * remaining);
+                    valF = remaining - valP;
                 } else {
                     valP = Math.round(remaining / 2);
                     valC = remaining - valP;
